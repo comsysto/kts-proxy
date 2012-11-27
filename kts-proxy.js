@@ -1,7 +1,7 @@
 // consts
 var configFilePath = "./config.json",
     defaultKillTimeout = 500,
-    ipPattern = new RegExp("^\d+\.\d+\.\d+\.\d+$"),
+    ipPattern = new RegExp("\d+\.\d+\.\d+\.\d+"),
     defaultConfig = {
         "settingsFilePath": "./settings.json",
         "watchSettingsFile": false,
@@ -420,7 +420,7 @@ function controlServerHandler(request, response) {
         if (ipPattern.test(query.session)) {
             sessionName = query.session
         } else {
-            console.log("invalid session parameter: " + sessionName)
+            console.log("invalid session parameter: " + sessionName + " in url: " + request.url)
         }
     }
     var session = getSession(sessionName)
