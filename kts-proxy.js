@@ -417,7 +417,7 @@ function controlServerHandler(request, response) {
     var sessionName = ip
     var query = url.parse(request.url, true).query
     if (query && query.session) {
-        if (ipPattern.text(query.session)) {
+        if (ipPattern.test(query.session)) {
             sessionName = query.session
         } else {
             console.log("invalid session parameter: " + sessionName)
