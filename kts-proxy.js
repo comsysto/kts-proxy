@@ -151,7 +151,6 @@ function updateBlockedHost(host, request) {
 function doProxying(response, request, host, session, isLocalRedirect, name) {
     var beginTime = new Date();
     if (session.blockedHosts[host]) {
-        util.log("blocking request [" + request.url + "]!")
         updateBlockedHost(session.blockedHosts[host], request)
         response.statusCode = 408
         response.end()
@@ -189,18 +188,19 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
     var timeoutId = null;
     var isKilled = false;
     if (!isWhiteListHost && !isLocalRedirect) {
-
+        var myTimeout = killTimeout(name)
         timeoutId = setTimeout(function () {
+            util.log("blacklisting host: " + host + " after " + new Date().getTime() - beginTime + "ms url: " + request.url)
             isKilled = true;
             updateBlockedHosts(host, request, session);
             response.end();
 //            proxyRequest.end();
-        }, killTimeout(name));
+        }, myTimeout);
     }
 
     // forward response data
     proxyRequest.addListener('response', function (proxyResponse) {
-        if (isKilled) return;
+//        if (isKilled) return;
         if (legacyHttp && proxyResponse.headers['transfer-encoding'] != undefined) {
 
             //filter headers
@@ -315,7 +315,6 @@ function proxyServerHandler(request, response, name) {
     // send request back to local dev server
     var localRedirect = false
     if (settings.localhostAlias.indexOf(host) != -1) {
-        util.log("using remote address: " + ip + " for localHost alias: " + host)
         host = ip;
         localRedirect = true
     }
