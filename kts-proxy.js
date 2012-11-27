@@ -285,7 +285,6 @@ function updateRequestTimes(beginTime, request, session) {
         return e2.time - e1.time
     })
     session.longestRequests = session.longestRequests.slice(0, 20)
-    console.log("longestRequest size: " + session.longestRequests.length)
 }
 
 function updateBlockedHosts(host, request, session) {
