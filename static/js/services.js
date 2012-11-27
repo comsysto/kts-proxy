@@ -2,14 +2,14 @@ KtsProxyModule.service("sessionService", function ($http, errorReportingService)
     var currentSession = null
 
     function sessionQueryString() {
-        if (this._currentSession == null) return "";
+        if (currentSession == null) return "";
 
         return "?session=" + encodeURIComponent(currentSession)
     }
 
     return {
         setSession: function (session) {
-            this._currentSession = session
+            currentSession = session
         },
 
         load: function (onResult) {
