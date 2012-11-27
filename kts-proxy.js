@@ -190,7 +190,7 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
     if (!isWhiteListHost && !isLocalRedirect) {
         var myTimeout = killTimeout(name)
         timeoutId = setTimeout(function () {
-            util.log("blacklisting host: " + host + " after " + new Date().getTime() - beginTime + "ms url: " + request.url)
+            util.log("blacklisting host: " + host + " after " + (new Date().getTime() - beginTime) + "ms url: " + request.url)
             isKilled = true;
             updateBlockedHosts(host, request, session);
             response.end();
