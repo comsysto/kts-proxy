@@ -1,0 +1,77 @@
+<div ng-controller="settingsCtrl">
+    <form name="form" novalidate ng-show="settings">
+        <div class="row">
+            <div class="span9">
+                <h3>Settings</h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span10">
+                <table class="table table-bordered">
+                    <tr>
+                        <th colspan="2">Configured Proxy Conntectors</th>
+                    </tr>
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Timeout</th>
+                    </tr>
+                    <tr ng-repeat="proxy in settings.proxies">
+                        <td>{{proxy.name}}</td>
+                        <td>{{proxyInfo(proxy.name)}}</td>
+                        <td><input type="text" ng-model="proxy.killTimeout" required></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span5">
+                <table class="table table-bordered">
+                    <tr>
+                        <th>Whitelisted Host</th>
+                    </tr>
+                    <tr ng-repeat="host in settings.hostWhiteListPatterns">
+                        <td>{{host}}</td>
+                        <td><a class="btn" ng-click="removeWhiteListHost(host)"><i
+                                class="icon-remove-circle"></i></a></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" ng-model="whiteListHost" name="whiteListHost" required></td>
+                        <td><a class="btn" ng-disabled="form.whiteListHost.$invalid" ng-click="addWhiteListHost()"><i
+                                class="icon-plus"></i></a></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="span5">
+                <table class="table table-bordered">
+                    <tr>
+                        <th>Localhost Alias</th>
+                    </tr>
+                    <tr ng-repeat="alias in settings.localhostAlias">
+                        <td>{{alias}}</td>
+                        <td><a class="btn" ng-click="removeLocalhostAlias(alias)"><i
+                                class="icon-remove-circle"></i></a></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" ng-model="localhostAlias" name="localhostAlias" required></td>
+                        <td><a class="btn" ng-disabled="form.localhostAlias.$invalid" ng-click="addLocalhostAlias()"><i
+                                class="icon-plus"></i></a></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div>
+            <div class="row">
+                <div class="span9">
+                    <div class="alert alert-info" style="display: inline-block" ng-show="message != null">
+                        <span>{{message}}</span>
+                    </div>
+                    <a class="btn btn-primary" ng-disabled="form.timeout.$invalid" ng-click="storeSettings()"><i
+                            class="icon-ok icon-white"></i> Save</a>
+                    <a class="btn btn-primary" ng-click="restoreSettings()"><i
+                            class="icon-ban-circle icon-white"></i> Cancel</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

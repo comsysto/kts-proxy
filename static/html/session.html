@@ -1,0 +1,59 @@
+<div ng-controller="sessionCtrl">
+    <div class="row">
+        <div class="span5">
+            <h3>Session</h3>
+            <select ng-model="currentSession"
+                    ng-options="session.value as session.text for session in sessionOptions()">
+            </select>
+            <div>
+                <a class="btn btn-primary" ng-click="reset()"><i class="icon-trash icon-white"></i>
+                    Reset
+                </a>
+            </div>
+        </div>
+
+    </div>
+    <div class="row" style="margin-top: 10px">
+        <div class="span9">
+            <h4>Blocked Hosts</h4>
+            <table class="table table-bordered">
+                <tr>
+                    <th>Host</th>
+                </tr>
+                <tr ng-repeat="host in state.blockedHosts">
+                    <td>
+                        <span style="width: 60px">{{host.host}}</span>
+                        <ul>
+                            <li ng-repeat="(url, referer) in host.requests"><b>{{url}}</b>
+                                <ul>
+                                    <li ng-repeat="(ref, count) in referer">{{ref}} # {{count}}</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div class="row">
+        <div class="span9">
+            <h4>Requests by Time</h4>
+            <table class="table table-bordered">
+                <tr>
+                    <th>Time in ms</th>
+                    <th>Method</th>
+                    <th>URL</th>
+                </tr>
+                <tbody>
+                <tr ng-repeat="request in state.longestRequests">
+                    <td><span style="width: 60px">{{request.time}}</span></td>
+                    <td><span style="width: 60px">{{request.method}}</span></td>
+                    <td>
+                        <div style="width: 600px; overflow: scroll">{{request.url}}</div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

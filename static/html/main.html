@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="ktsProxy">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta charset="utf-8"/>
+    <title>kill the slow - proxy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="A proxy who kill slow http requests, eg. tracking pixels"/>
+    <meta name="author" content="Otto Krammer"/>
+
+    <!-- Le styles -->
+    <link href="/static/css/bootstrap.css" rel="stylesheet"/>
+    <style type="text/css">
+        body {
+            padding-top: 60px;
+            padding-bottom: 40px;
+        }
+
+        .sidebar-nav {
+            padding: 9px 0;
+        }
+    </style>
+    <script src="/static/jslib/jquery-1.7.1.min.js" type="text/javascript"></script>
+    <script src="/static/jslib/angular.js" type="text/javascript"></script>
+    <script src="/static/jslib/bootstrap.js" type="text/javascript"></script>
+    <script src="/static/js/main.js" type="text/javascript"></script>
+    <script src="/static/js/services.js" type="text/javascript"></script>
+    <script src="/static/js/session.js" type="text/javascript"></script>
+    <script src="/static/js/settings.js" type="text/javascript"></script>
+
+</head>
+<body ng-controller="mainCtrl">
+<div class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="container">
+            <a class="brand" href="#">kill the slow - proxy</a>
+            <ul class="nav">
+                <li ng-class="classForViewLink('session')">
+                    <a ng-click="showView('session')">
+                        <i class="icon-eye-open icon-white"></i>
+                        Session
+                    </a>
+                </li>
+                <li ng-class="classForViewLink('settings')">
+                    <a ng-click="showView('settings')">
+                        <i class="icon-cog icon-white"></i>
+                        Settings
+                    </a>
+                </li>
+            </ul>
+
+            <div class=" pull-right" ng-hide="viewName != 'session'">
+                <div ng-hide="heartBeatRunning">
+                    <a class="btn btn-primary btn-small" ng-click="startHeartBeat()" style="height: 20px">
+                        <i class="icon-refresh icon-white"></i> start refresh
+                    </a>
+                </div>
+                <div ng-show="heartBeatRunning" class="progress"
+                     style="width: 50px; height: 17px; margin-top: 10px; margin-bottom: 0px">
+                    <div class="bar" style="width: {{loadPercent}}%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container">
+    <div class="ng-view">
+        Content goes here!
+    </div>
+    <hr/>
+    <footer>
+        <!--<p>&copy; comSysto GmbH 2012</p>-->
+    </footer>
+
+</div>
+<!-- /container -->
+
+<div id="myModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="myModalLabel">Error</h3>
+    </div>
+    <div class="modal-body">
+        <p>{{errorMessage}}</p>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true" ng-click="startHeartBeat()">Retry</button>
+        <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    </div>
+</div>
+
+</body>
+</html>
