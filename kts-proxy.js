@@ -188,11 +188,12 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
     var timeoutId = null;
     var isKilled = false;
     if (!isWhiteListHost && !isLocalRedirect) {
-        isKilled = true;
+
         timeoutId = setTimeout(function () {
+            isKilled = true;
             updateBlockedHosts(host, request, session);
             response.end();
-            proxyRequest.end();
+//            proxyRequest.end();
         }, killTimeout(name));
     }
 
@@ -212,15 +213,15 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
                 buffer += chunk;
             });
             proxyResponse.addListener('end', function () {
-                if (isKilled) return;
-                headers['Content-length'] = buffer.length;//cancel transfer encoding "chunked"
-                response.writeHead(proxyResponse.statusCode, headers);
-                response.write(buffer, 'binary');
-                response.end();
+                if (!isKilled) {
+                    headers['Content-length'] = buffer.length;//cancel transfer encoding "chunked"
+                    response.writeHead(proxyResponse.statusCode, headers);
+                    response.write(buffer, 'binary');
+                    response.end();
 
-                if (timeoutId)
-                    clearTimeout(timeoutId)
-
+                    if (timeoutId)
+                        clearTimeout(timeoutId)
+                }
                 if (!isWhiteListHost && !isLocalRedirect)
                     updateRequestTimes(beginTime, request, session)
             });
@@ -234,11 +235,11 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
                 response.write(chunk, 'binary');
             });
             proxyResponse.addListener('end', function () {
-                if (isKilled) return;
-                response.end();
-
-                if (timeoutId)
-                    clearTimeout(timeoutId)
+                if (!isKilled) {
+                    response.end();
+                    if (timeoutId)
+                        clearTimeout(timeoutId)
+                }
 
                 if (!isWhiteListHost && !isLocalRedirect)
                     updateRequestTimes(beginTime, request, session)
@@ -248,11 +249,9 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
 
     //forward request data
     request.addListener('data', function (chunk) {
-        if (isKilled) return;
         proxyRequest.write(chunk, 'binary');
     });
     request.addListener('end', function () {
-        if (isKilled) return;
         proxyRequest.end();
     });
 }
@@ -285,6 +284,7 @@ function updateRequestTimes(beginTime, request, session) {
         return e2.time - e1.time
     })
     session.longestRequests = session.longestRequests.slice(0, 20)
+    console.log("longestRequest size: " + session.longestRequests.length)
 }
 
 function updateBlockedHosts(host, request, session) {
