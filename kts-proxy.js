@@ -358,6 +358,34 @@ function serveFile(filePath, ctx) {
     });
     return null;
 }
+
+function serveExternalUrl(path, ctx){
+    util.log("Serving External url: " + path)
+    var urlToRequest = url.parse(path)
+    urlToRequest.method = ctx.request.method;
+    urlToRequest.headers = ctx.request.headers;
+    var proxyRequest = http.request(urlToRequest);
+    proxyRequest.addListener('response', function (proxyResponse) {
+        ctx.response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
+
+        proxyResponse.on("data", function(data){
+            ctx.response.write(data)
+        })
+
+        proxyResponse.on("end", function(){
+            ctx.response.end()
+        })
+   })
+    ctx.request.on("data", function(data){
+        proxyRequest.write(data)
+    })
+
+    ctx.request.on("end", function(){
+        proxyRequest.end()
+    })
+    return null;
+}
+
 var controlServerHandlers = {
     "^/state$": {
         "GET": function (ctx) {
@@ -397,6 +425,13 @@ var controlServerHandlers = {
                 return;
             }
             return serveFile(path, ctx);
+        }
+    },
+
+    "^/external/.+$": {
+        "GET": function (ctx) {
+            var path = /^\/external\/(.*)/.exec(ctx.url.pathname)[1]
+            return serveExternalUrl(path, ctx);
         }
     },
 
