@@ -191,9 +191,11 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
         var myTimeout = killTimeout(name)
         timeoutId = setTimeout(function () {
             util.log("blacklisting host: " + host + " after " + (new Date().getTime() - beginTime) + "ms url: " + request.url)
+            response.connection.destroy();
+            console.log("destroying connection of response after timeout")
+
             isKilled = true;
             updateBlockedHosts(host, request, session);
-            response.end();
 //            proxyRequest.end();
         }, myTimeout);
     }
@@ -359,7 +361,7 @@ function serveFile(filePath, ctx) {
     return null;
 }
 
-function serveExternalUrl(path, ctx){
+function serveExternalUrl(path, ctx) {
     util.log("Serving External url: " + path)
     var urlToRequest = url.parse(path)
     urlToRequest.method = ctx.request.method;
@@ -368,19 +370,19 @@ function serveExternalUrl(path, ctx){
     proxyRequest.addListener('response', function (proxyResponse) {
         ctx.response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
 
-        proxyResponse.on("data", function(data){
+        proxyResponse.on("data", function (data) {
             ctx.response.write(data)
         })
 
-        proxyResponse.on("end", function(){
+        proxyResponse.on("end", function () {
             ctx.response.end()
         })
-   })
-    ctx.request.on("data", function(data){
+    })
+    ctx.request.on("data", function (data) {
         proxyRequest.write(data)
     })
 
-    ctx.request.on("end", function(){
+    ctx.request.on("end", function () {
         proxyRequest.end()
     })
     return null;
