@@ -13,6 +13,7 @@ files = [
     'static/jslib/*.js',
     'test/lib/angular/angular-mocks.js',
     'static/js/*.js',
+    'test/mock/*.js',
     'test/unit/mainCtrlSpec.js'
 ];
 
