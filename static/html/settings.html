@@ -45,6 +45,25 @@
             <div class="span5">
                 <table class="table table-bordered">
                     <tr>
+                        <th>Blacklist URL Patterns</th>
+                    </tr>
+                    <tr ng-repeat="pattern in settings.blackListUrlPatterns">
+                        <td>{{pattern}}</td>
+                        <td><a class="btn" ng-click="removeBlackListUrlPattern(pattern)"><i
+                                class="icon-remove-circle"></i></a></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" ng-model="blackListUrlPattern" name="blackListUrlPattern" required></td>
+                        <td><a class="btn" ng-disabled="form.blackListUrlPattern.$invalid" ng-click="addBlackListUrlPattern()"><i
+                                class="icon-plus"></i></a></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span5">
+                <table class="table table-bordered">
+                    <tr>
                         <th>Localhost Alias</th>
                     </tr>
                     <tr ng-repeat="alias in settings.localhostAlias">
@@ -58,6 +77,9 @@
                                 class="icon-plus"></i></a></td>
                     </tr>
                 </table>
+            </div>
+            <div class="span5">
+
             </div>
         </div>
         <div>

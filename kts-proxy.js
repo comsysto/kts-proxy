@@ -41,7 +41,9 @@ function makeDefaultSettings() {
     return {
         localhostAlias: ["localhost"],
         hostWhiteListPatterns: [],
-        proxies: []
+        proxies: [],
+        blackListUrlPatterns: []
+
     };
 }
 
@@ -108,7 +110,13 @@ function writeSettingsFile(settings) {
 
 function updateSettings(loadedSettings) {
     console.log("update settings")
-    settings = loadedSettings
+    var defaultSettings = makeDefaultSettings();
+    Object.keys(defaultSettings).forEach(function(key) {
+        if(loadedSettings[key] === undefined){
+            loadedSettings[key] = defaultSettings[key];
+        }
+    });
+    settings = loadedSettings;
 }
 
 
@@ -151,9 +159,18 @@ function updateBlockedHost(host, request) {
 function doProxying(response, request, host, session, isLocalRedirect, name) {
     var beginTime = new Date();
     if (session.blockedHosts[host]) {
-        updateBlockedHost(session.blockedHosts[host], request)
-        response.statusCode = 408
-        response.end()
+        updateBlockedHost(session.blockedHosts[host], request);
+        response.statusCode = 408;
+        response.end();
+        return;
+    }
+
+    var isBlacklisted = settings.blackListUrlPatterns.some(function(pattern){
+        return new RegExp(pattern).test(request.url)
+    });
+
+    if(isBlacklisted){
+       sendNotFound(response, "Blocked by KTS Proxy")
         return;
     }
 
@@ -168,7 +185,7 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
         headers['X-Forwarded-For'] = request.connection.remoteAddress;
     }
 
-    var urlToRequest = url.parse(request.url)
+    var urlToRequest = url.parse(request.url);
     urlToRequest.method = request.method;
     urlToRequest.headers = request.headers;
     urlToRequest.hostname = host;

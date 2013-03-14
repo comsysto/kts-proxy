@@ -44,6 +44,18 @@ KtsProxyModule.controller("settingsCtrl", function ($scope, $timeout, settingsSe
         })
     }
 
+    $scope.addBlackListUrlPattern = function () {
+        if(!$scope.blackListUrlPattern) return;
+        $scope.settings.blackListUrlPatterns.push($scope.blackListUrlPattern)
+        $scope.blackListUrlPattern = null
+    }
+
+    $scope.removeBlackListUrlPattern = function (pattern) {
+        $scope.settings.blackListUrlPatterns = $scope.settings.blackListUrlPatterns.filter(function (e) {
+            return e != pattern;
+        })
+    }
+
     $scope.storeSettings = function () {
         var timeoutSet = $scope.settings.proxies.every(function(proxy){
             return proxy.killTimeout

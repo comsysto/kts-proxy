@@ -54,6 +54,5 @@ KtsProxyModule.controller("mainCtrl", function ($scope, $route, heartBeatService
     }
 
     setupViewName()
-    console.log("creating main.js")
 
 })
