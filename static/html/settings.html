@@ -82,6 +82,36 @@
 
             </div>
         </div>
+        <div class="row">
+            <div class="span9">
+                <h4>HTML Filter Rules</h4>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span10">
+                <table class="table table-bordered">
+                    <tr>
+                        <th>URL Pattern</th>
+                        <th>JQuery Selector for Element to Remove</th>
+                        <th>&nbsp;</th>
+                    </tr>
+                    <tr ng-repeat="htmlFilterRule in settings.htmlFilterRules">
+                        <td>{{htmlFilterRule.urlPattern}}</td>
+                        <td>{{htmlFilterRule.elementToRemoveSelector}}</td>
+                        <td>
+                            <a class="btn" ng-click="removeHtmlFilterRule(htmlFilterRule)">
+                                <i class="icon-remove-circle"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" ng-model="htmlFilterRule.urlPattern" name="htmlFilterRule_urlPattern" required></td>
+                        <td><input type="text" ng-model="htmlFilterRule.elementToRemoveSelector" name="htmlFilterRule_elementToRemoveSelector" required></td>
+                        <td><a class="btn" ng-disabled="form.htmlFilterRule_urlPattern.$invalid || form.htmlFilterRule_elementToRemoveSelector.$invalid" ng-click="addHtmlFilterRule()"><i class="icon-plus"></i></a></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
         <div>
             <div class="row">
                 <div class="span9">
