@@ -31,7 +31,7 @@ var http = require('http'),
     util = require('util'),
     url = require('url'),
     fs = require('fs'),
-    jsdom = require('jsdom'),
+    cheerio = require('cheerio'),
     zlib = require('zlib');
 
 // runtime data
@@ -233,6 +233,11 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
         }, myTimeout);
     }
 
+    function stopTiming() {
+        if (!isWhiteListHost && !isLocalRedirect)
+            updateRequestTimes(beginTime, request, session)
+    }
+
     // forward response data
     proxyRequest.addListener('response', function (proxyResponse) {
             if (filterRulesToApply.length !== 0 || (legacyHttp && proxyResponse.headers['transfer-encoding'] != undefined)) {
@@ -244,10 +249,26 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
                 var encodingType = headers['content-encoding'];
                 var statusCode = proxyResponse.statusCode;
 
+                var writeResponse = function (error, bytes) {
+                    headers['content-length'] = bytes.length;//cancel transfer encoding "chunked"
+                    response.writeHead(statusCode, headers);
+                    response.write(bytes);
+                    response.end();
+
+                    if (timeoutId)
+                        clearTimeout(timeoutId);
+                    stopTiming();
+                };
+
                 if (encodingType === 'gzip') {
                     var gunzip = zlib.createGunzip();
                     proxyResponse.pipe(gunzip);
                     proxyResponse = gunzip;
+                    (function (originalWriteResponse) {
+                        writeResponse = function (error, bytes) {
+                            encodeGzipped(bytes, originalWriteResponse);
+                        };
+                    }(writeResponse));
                 }
                 proxyResponse.addListener('error', function (err) {
                     console.log(err)
@@ -258,30 +279,13 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
                     buffer += chunk.toString();
                 });
                 proxyResponse.addListener('end', function () {
-                        function stopTiming() {
-                            if (!isWhiteListHost && !isLocalRedirect)
-                                updateRequestTimes(beginTime, request, session)
-                        }
-
-                        if (!isKilled) {
-                            applyHtmlFilterRulesToBody(buffer, filterRulesToApply, function (processedBuffer) {
-                                console.log("Length: " + processedBuffer.length + " " + headers['content-length']);
-                                encode(processedBuffer, encodingType, function (err, bytes) {
-                                    headers['content-length'] = bytes.length;//cancel transfer encoding "chunked"
-                                    response.writeHead(statusCode, headers);
-                                    response.write(bytes);
-                                    response.end();
-
-                                    if (timeoutId)
-                                        clearTimeout(timeoutId);
-                                    stopTiming();
-                                });
-                            });
-                        }
+                    if (!isKilled) {
+                        applyHtmlFilterRulesToBody(buffer, filterRulesToApply, writeResponse);
                         stopTiming();
                     }
-                );
-            } else {
+                });
+            }
+            else {
                 //send headers as received
                 response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
 
@@ -315,43 +319,25 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
 }
 
 function applyHtmlFilterRulesToBody(body, rules, callback) {
-    jsdom.env({
-        html: body,
-        scripts: [
-            "http://code.jquery.com/jquery.js"
-        ],
-        config: {
-            features: {
-                FetchExternalResources: false
-            }
-        }
-    }, function (err, window) {
-        try {
+    try {
+        var $ = cheerio.load(body);
+        rules.forEach(function (rule) {
+            var selectionToRemove = $(rule.elementToRemoveSelector);
+            console.log("REMOVING: " + selectionToRemove.html());
+            selectionToRemove.remove();
+        });
 
-            var $ = window.jQuery
-            rules.forEach(function (rule) {
-
-                var selectionToRemove = $(rule.elementToRemoveSelector);
-                console.log("REMOVING: " + selectionToRemove.html());
-                selectionToRemove.remove();
-            });
-
-            // jQuery is now loaded on the jsdom window created from 'agent.body'
-            callback($("html").html());
-        } catch (e) {
-            console.log(e);
-            callback(body);
-        }
-    });
+        // jQuery is now loaded on the jsdom window created from 'agent.body'
+        callback(null, $("html").html());
+    } catch (e) {
+        console.log(e);
+        callback(e, body);
+    }
 }
 
-function encode(msg, encoding, callback) {
-    if (encoding === 'gzip') {
-        console.log("gzipping");
-        zlib.gzip(msg, callback);
-        return;
-    }
-    callback(undefined, msg);
+function encodeGzipped(msg, callback) {
+    console.log("gzipping");
+    zlib.gzip(msg, callback);
 }
 
 function killTimeout(name) {
