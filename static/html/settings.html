@@ -1,129 +1,233 @@
 <div ng-controller="settingsCtrl">
-    <form name="form" novalidate ng-show="settings">
-        <div class="row">
-            <div class="span9">
-                <h3>Settings</h3>
-            </div>
-        </div>
-        <div class="row">
-            <div class="span10">
-                <table class="table table-bordered">
-                    <tr>
-                        <th colspan="2">Configured Proxy Conntectors</th>
-                    </tr>
-                    <tr>
-                        <th>Name</th>
-                        <th>Address</th>
-                        <th>Timeout</th>
-                    </tr>
-                    <tr ng-repeat="proxy in settings.proxies">
-                        <td>{{proxy.name}}</td>
-                        <td>{{proxyInfo(proxy.name)}}</td>
-                        <td><input type="text" ng-model="proxy.killTimeout" required></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        <div class="row">
-            <div class="span5">
-                <table class="table table-bordered">
-                    <tr>
-                        <th>Whitelisted Host</th>
-                    </tr>
-                    <tr ng-repeat="host in settings.hostWhiteListPatterns">
-                        <td>{{host}}</td>
-                        <td><a class="btn" ng-click="removeWhiteListHost(host)"><i
-                                class="icon-remove-circle"></i></a></td>
-                    </tr>
-                    <tr>
-                        <td><input type="text" ng-model="whiteListHost" name="whiteListHost" required></td>
-                        <td><a class="btn" ng-disabled="form.whiteListHost.$invalid" ng-click="addWhiteListHost()"><i
-                                class="icon-plus"></i></a></td>
-                    </tr>
-                </table>
-            </div>
-            <div class="span5">
-                <table class="table table-bordered">
-                    <tr>
-                        <th>Blacklist URL Patterns</th>
-                    </tr>
-                    <tr ng-repeat="pattern in settings.blackListUrlPatterns">
-                        <td>{{pattern}}</td>
-                        <td><a class="btn" ng-click="removeBlackListUrlPattern(pattern)"><i
-                                class="icon-remove-circle"></i></a></td>
-                    </tr>
-                    <tr>
-                        <td><input type="text" ng-model="blackListUrlPattern" name="blackListUrlPattern" required></td>
-                        <td><a class="btn" ng-disabled="form.blackListUrlPattern.$invalid" ng-click="addBlackListUrlPattern()"><i
-                                class="icon-plus"></i></a></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        <div class="row">
-            <div class="span5">
-                <table class="table table-bordered">
-                    <tr>
-                        <th>Localhost Alias</th>
-                    </tr>
-                    <tr ng-repeat="alias in settings.localhostAlias">
-                        <td>{{alias}}</td>
-                        <td><a class="btn" ng-click="removeLocalhostAlias(alias)"><i
-                                class="icon-remove-circle"></i></a></td>
-                    </tr>
-                    <tr>
-                        <td><input type="text" ng-model="localhostAlias" name="localhostAlias" required></td>
-                        <td><a class="btn" ng-disabled="form.localhostAlias.$invalid" ng-click="addLocalhostAlias()"><i
-                                class="icon-plus"></i></a></td>
-                    </tr>
-                </table>
-            </div>
-            <div class="span5">
+<form name="form" novalidate ng-show="settings">
+<div class="row">
+    <div class="span9">
+        <h3>Settings</h3>
+    </div>
+</div>
+<div class="row">
+    <div class="span10">
+        <table class="table table-bordered">
+            <tr>
+                <th colspan="2">
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="Here you can define a timeout for a proxy server instance. A new instance can be added via the config.xml.">
+                        Configured Proxy Conntectors
+                    </a>
+                </th>
+            </tr>
+            <tr>
+                <th>
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="A user defined name to identify the proxy server instance">
+                        Name
+                    </a>
+                </th>
+                <th>
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="A address in the form <ip>:<port> to identify the network interface to bind. Use 0.0.0.0 as IP address to bind to all network interfaces.">
+                        Address
+                    </a>
+                </th>
+                <th>
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="The timeout in milliseconds after which a request should be aborted.">
+                        Timeout
+                    </a>
+                </th>
+            </tr>
+            <tr ng-repeat="proxy in settings.proxies">
+                <td>{{proxy.name}}</td>
+                <td>{{proxyInfo(proxy.name)}}</td>
+                <td><input type="text" ng-model="proxy.killTimeout" required></td>
+            </tr>
+        </table>
+    </div>
+</div>
+<div class="row">
+    <div class="span5">
+        <table class="table table-bordered">
+            <tr>
+                <th>
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="A list of regex patterns host names that should nerver be blocked.">
+                        Whitelisted Host
+                    </a>
+                </th>
+            </tr>
+            <tr ng-repeat="host in settings.hostWhiteListPatterns">
+                <td>{{host}}</td>
+                <td>
+                    <a class="btn" ng-click="removeWhiteListHost(host)"
+                       data-toggle="tooltip"
+                       data-placement="right"
+                       data-original-title="Remove Whitelist Host">
+                        <i class="icon-remove-circle"></i>
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td><input type="text" ng-model="whiteListHost" name="whiteListHost" required></td>
+                <td>
+                    <a class="btn" ng-disabled="form.whiteListHost.$invalid" ng-click="addWhiteListHost()"
+                       data-toggle="tooltip"
+                       data-placement="right"
+                       data-original-title="Add Whitelist Host">
+                        <i class="icon-plus"></i>
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="span5">
+        <table class="table table-bordered">
+            <tr>
+                <th>
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="A list of regex patterns for urls that should be blocked immediately.">
+                        Blacklist URL Patterns
+                    </a>
+                </th>
+            </tr>
+            <tr ng-repeat="pattern in settings.blackListUrlPatterns">
+                <td>{{pattern}}</td>
+                <td>
+                    <a class="btn" ng-click="removeBlackListUrlPattern(pattern)"
+                       data-toggle="tooltip"
+                       data-placement="right"
+                       data-original-title="Remove Blacklist URL Pattern">
+                        <i class="icon-remove-circle"></i>
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td><input type="text" ng-model="blackListUrlPattern" name="blackListUrlPattern" required></td>
+                <td>
+                    <a class="btn" ng-disabled="form.blackListUrlPattern.$invalid"
+                       ng-click="addBlackListUrlPattern()"
+                       data-toggle="tooltip"
+                       data-placement="right"
+                       data-original-title="Add Blacklist URL Pattern">
+                        <i class="icon-plus"></i>
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+<div class="row">
+    <div class="span5">
+        <table class="table table-bordered">
+            <tr>
+                <th>
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="This alias defines hosts that are an alias for the local development machine. Requests to this hosts are redirected to the host from which the request is issued.">
+                        Localhost Alias
+                    </a>
+                </th>
+            </tr>
+            <tr ng-repeat="alias in settings.localhostAlias">
+                <td>{{alias}}</td>
+                <td>
+                    <a class="btn" ng-click="removeLocalhostAlias(alias)"
+                       data-toggle="tooltip"
+                       data-placement="right"
+                       data-original-title="Remove Localhost Alias">
+                        <i class="icon-remove-circle"></i>
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td><input type="text" ng-model="localhostAlias" name="localhostAlias" required></td>
+                <td><a class="btn" ng-disabled="form.localhostAlias.$invalid" ng-click="addLocalhostAlias()"
+                       data-toggle="tooltip"
+                       data-placement="right"
+                       data-original-title="Add Localhost Alias"><i
+                        class="icon-plus"></i></a></td>
+            </tr>
+        </table>
+    </div>
+    <div class="span5">
 
+    </div>
+</div>
+<div class="row">
+    <div class="span9">
+        <h4>
+            <a data-toggle="tooltip" data-placement="bottom"
+               data-original-title="Here you can define rules to remove specific HTML elements from proxied pages.">
+                HTML Filter Rules
+            </a>
+        </h4>
+    </div>
+</div>
+<div class="row">
+    <div class="span10">
+        <table class="table table-bordered">
+            <tr>
+                <th>
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="A regex pattern to match the url for which the rule should be applied.">
+                        URL Pattern
+                    </a>
+                </th>
+                <th>
+                    <a data-toggle="tooltip" data-placement="bottom"
+                       data-original-title="A jQuery selector to specify the elements that should be removed">
+                        JQuery Selector for Element to Remove
+                    </a>
+                </th>
+                <th>&nbsp;</th>
+            </tr>
+            <tr ng-repeat="htmlFilterRule in settings.htmlFilterRules">
+                <td>{{htmlFilterRule.urlPattern}}</td>
+                <td>{{htmlFilterRule.elementToRemoveSelector}}</td>
+                <td>
+                    <a class="btn" ng-click="removeHtmlFilterRule(htmlFilterRule)"
+                       data-toggle="tooltip"
+                       data-placement="right"
+                       data-original-title="Remove Rule">
+                        <i class="icon-remove-circle"></i>
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td><input type="text" ng-model="htmlFilterRule.urlPattern" name="htmlFilterRule_urlPattern"
+                           required></td>
+                <td><input type="text" ng-model="htmlFilterRule.elementToRemoveSelector"
+                           name="htmlFilterRule_elementToRemoveSelector" required></td>
+                <td><a class="btn"
+                       ng-disabled="form.htmlFilterRule_urlPattern.$invalid || form.htmlFilterRule_elementToRemoveSelector.$invalid"
+                       ng-click="addHtmlFilterRule()"
+                       data-toggle="tooltip"
+                       data-placement="right"
+                       data-original-title="Add Rule">
+                    <i class="icon-plus"></i></a></td>
+            </tr>
+        </table>
+    </div>
+</div>
+<div>
+    <div class="row">
+        <div class="span9">
+            <div class="alert alert-info" style="display: inline-block" ng-show="message != null">
+                <span>{{message}}</span>
             </div>
+            <a class="btn btn-primary" ng-disabled="form.timeout.$invalid" ng-click="storeSettings()" data-toggle="tooltip"
+               data-placement="bottom"
+               data-original-title="Save Current Settings">
+                <i class="icon-ok icon-white"></i>
+                Save
+            </a>
+            <a class="btn btn-primary" ng-click="restoreSettings()"
+               data-toggle="tooltip"
+               data-placement="bottom"
+               data-original-title="Revert Changes to Settings">
+                <i class="icon-ban-circle icon-white"></i>
+                Cancel
+            </a>
         </div>
-        <div class="row">
-            <div class="span9">
-                <h4>HTML Filter Rules</h4>
-            </div>
-        </div>
-        <div class="row">
-            <div class="span10">
-                <table class="table table-bordered">
-                    <tr>
-                        <th>URL Pattern</th>
-                        <th>JQuery Selector for Element to Remove</th>
-                        <th>&nbsp;</th>
-                    </tr>
-                    <tr ng-repeat="htmlFilterRule in settings.htmlFilterRules">
-                        <td>{{htmlFilterRule.urlPattern}}</td>
-                        <td>{{htmlFilterRule.elementToRemoveSelector}}</td>
-                        <td>
-                            <a class="btn" ng-click="removeHtmlFilterRule(htmlFilterRule)">
-                                <i class="icon-remove-circle"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><input type="text" ng-model="htmlFilterRule.urlPattern" name="htmlFilterRule_urlPattern" required></td>
-                        <td><input type="text" ng-model="htmlFilterRule.elementToRemoveSelector" name="htmlFilterRule_elementToRemoveSelector" required></td>
-                        <td><a class="btn" ng-disabled="form.htmlFilterRule_urlPattern.$invalid || form.htmlFilterRule_elementToRemoveSelector.$invalid" ng-click="addHtmlFilterRule()"><i class="icon-plus"></i></a></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        <div>
-            <div class="row">
-                <div class="span9">
-                    <div class="alert alert-info" style="display: inline-block" ng-show="message != null">
-                        <span>{{message}}</span>
-                    </div>
-                    <a class="btn btn-primary" ng-disabled="form.timeout.$invalid" ng-click="storeSettings()"><i
-                            class="icon-ok icon-white"></i> Save</a>
-                    <a class="btn btn-primary" ng-click="restoreSettings()"><i
-                            class="icon-ban-circle icon-white"></i> Cancel</a>
-                </div>
-            </div>
-        </div>
-    </form>
+    </div>
+</div>
+</form>
 </div>

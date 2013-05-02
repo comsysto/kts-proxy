@@ -1,5 +1,9 @@
 KtsProxyModule.controller("settingsCtrl", function ($scope, $timeout, settingsService) {
 
+    $('body').tooltip({
+        selector: '[data-toggle="tooltip"]'
+    });
+
     var proxyInfos = {};
     function onSettings(result) {
         $scope.settings = result.settings;

@@ -1,1 +1,7 @@
-.test{}
+th a[data-toggle="tooltip"]{
+    color: black;
+}
+
+h4 a[data-toggle="tooltip"]{
+    color: black;
+}
