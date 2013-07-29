@@ -280,7 +280,7 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
                 });
                 proxyResponse.addListener('end', function () {
                     if (!isKilled) {
-                        applyHtmlFilterRulesToBody(buffer, filterRulesToApply, writeResponse);
+                        applyHtmlFilterRulesToBodyAndWriteResponse(buffer, filterRulesToApply, writeResponse);
                         stopTiming();
                     }
                 });
@@ -318,7 +318,7 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
     });
 }
 
-function applyHtmlFilterRulesToBody(body, rules, callback) {
+function applyHtmlFilterRulesToBodyAndWriteResponse(body, rules, responseCallback) {
     try {
         var $ = cheerio.load(body);
         rules.forEach(function (rule) {
@@ -327,14 +327,14 @@ function applyHtmlFilterRulesToBody(body, rules, callback) {
                 selectionToRemove.before($("<!-- Filtered " + rule.elementToRemoveSelector + " by KTS rule. -->"));
                 console.log("REMOVING: " + selectionToRemove.html());
                 selectionToRemove.remove();
-                // jQuery is now loaded on the jsdom window created from 'agent.body'
-                callback(null, $("html").html());
             }
         });
+        // jQuery is now loaded on the jsdom window created from 'agent.body'
+        responseCallback(null, $("html").html());
 
     } catch (e) {
         console.log(e);
-        callback(e, body);
+        responseCallback(e, body);
     }
 }
 
