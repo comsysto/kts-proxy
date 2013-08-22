@@ -30,20 +30,21 @@ var configFilePath = "./config.json",
 var http = require('http'),
     util = require('util'),
     url = require('url'),
-    fs = require('fs');
+    fs = require('fs'),
+    cheerio = require('cheerio'),
+    zlib = require('zlib');
 
 // runtime data
 var sessions = {},
     settings = makeDefaultSettings();
-
 
 function makeDefaultSettings() {
     return {
         localhostAlias: ["localhost"],
         hostWhiteListPatterns: [],
         proxies: [],
-        blackListUrlPatterns: []
-
+        blackListUrlPatterns: [],
+        htmlFilterRules: []
     };
 }
 
@@ -111,8 +112,8 @@ function writeSettingsFile(settings) {
 function updateSettings(loadedSettings) {
     console.log("update settings")
     var defaultSettings = makeDefaultSettings();
-    Object.keys(defaultSettings).forEach(function(key) {
-        if(loadedSettings[key] === undefined){
+    Object.keys(defaultSettings).forEach(function (key) {
+        if (loadedSettings[key] === undefined) {
             loadedSettings[key] = defaultSettings[key];
         }
     });
@@ -156,6 +157,19 @@ function updateBlockedHost(host, request) {
     }
 }
 
+function getMatchingHtmlRules(request) {
+    return settings.htmlFilterRules.filter(function (rule) {
+        if (rule.urlPattern === null || rule.urlPattern === undefined || rule.urlPattern.trim().length === 0) {
+            return false;
+        }
+        if (rule.elementToRemoveSelector === null || rule.elementToRemoveSelector === undefined || rule.elementToRemoveSelector.trim().length === 0) {
+            return false;
+        }
+
+        var shouldApply = new RegExp(rule.urlPattern).test(request.url);
+        return  shouldApply
+    });
+}
 function doProxying(response, request, host, session, isLocalRedirect, name) {
     var beginTime = new Date();
     if (session.blockedHosts[host]) {
@@ -165,14 +179,16 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
         return;
     }
 
-    var isBlacklisted = settings.blackListUrlPatterns.some(function(pattern){
+    var isBlacklisted = settings.blackListUrlPatterns.some(function (pattern) {
         return new RegExp(pattern).test(request.url)
     });
 
-    if(isBlacklisted){
-       sendNotFound(response, "Blocked by KTS Proxy")
+    if (isBlacklisted) {
+        sendNotFound(response, "Blocked by KTS Proxy");
         return;
     }
+
+    var filterRulesToApply = getMatchingHtmlRules(request);
 
     //detect HTTP version
     var legacyHttp = request.httpVersionMajor == 1 && request.httpVersionMinor < 1 || request.httpVersionMajor < 1;
@@ -205,11 +221,11 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
     var timeoutId = null;
     var isKilled = false;
     if (!isWhiteListHost && !isLocalRedirect) {
-        var myTimeout = killTimeout(name)
+        var myTimeout = killTimeout(name);
         timeoutId = setTimeout(function () {
-            util.log("blacklisting host: " + host + " after " + (new Date().getTime() - beginTime) + "ms url: " + request.url)
+            util.log("blacklisting host: " + host + " after " + (new Date().getTime() - beginTime) + "ms url: " + request.url);
             response.connection.destroy();
-            console.log("destroying connection of response after timeout")
+            console.log("destroying connection of response after timeout");
 
             isKilled = true;
             updateBlockedHosts(host, request, session);
@@ -217,57 +233,83 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
         }, myTimeout);
     }
 
+    function stopTiming() {
+        if (!isWhiteListHost && !isLocalRedirect)
+            updateRequestTimes(beginTime, request, session)
+    }
+
     // forward response data
     proxyRequest.addListener('response', function (proxyResponse) {
-//        if (isKilled) return;
-        if (legacyHttp && proxyResponse.headers['transfer-encoding'] != undefined) {
+            if (filterRulesToApply.length !== 0 || (legacyHttp && proxyResponse.headers['transfer-encoding'] != undefined)) {
 
-            //filter headers
-            var headers = proxyResponse.headers;
-            delete proxyResponse.headers['transfer-encoding'];
-            var buffer = "";
+                //filter headers
+                var headers = proxyResponse.headers;
+                delete proxyResponse.headers['transfer-encoding'];
+                var buffer = "";
+                var encodingType = headers['content-encoding'];
+                var statusCode = proxyResponse.statusCode;
 
-            //buffer answer
-            proxyResponse.addListener('data', function (chunk) {
-                if (isKilled) return;
-                buffer += chunk;
-            });
-            proxyResponse.addListener('end', function () {
-                if (!isKilled) {
-                    headers['Content-length'] = buffer.length;//cancel transfer encoding "chunked"
-                    response.writeHead(proxyResponse.statusCode, headers);
-                    response.write(buffer, 'binary');
+                var writeResponse = function (error, bytes) {
+                    headers['content-length'] = bytes.length;//cancel transfer encoding "chunked"
+                    response.writeHead(statusCode, headers);
+                    response.write(bytes);
                     response.end();
 
                     if (timeoutId)
-                        clearTimeout(timeoutId)
-                }
-                if (!isWhiteListHost && !isLocalRedirect)
-                    updateRequestTimes(beginTime, request, session)
-            });
-        } else {
-            //send headers as received
-            response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
+                        clearTimeout(timeoutId);
+                    stopTiming();
+                };
 
-            //easy data forward
-            proxyResponse.addListener('data', function (chunk) {
-                if (isKilled) return;
-                response.write(chunk, 'binary');
-            });
-            proxyResponse.addListener('end', function () {
-                if (!isKilled) {
-                    response.end();
-                    if (timeoutId)
-                        clearTimeout(timeoutId)
+                if (encodingType === 'gzip') {
+                    var gunzip = zlib.createGunzip();
+                    proxyResponse.pipe(gunzip);
+                    proxyResponse = gunzip;
+                    (function (originalWriteResponse) {
+                        writeResponse = function (error, bytes) {
+                            encodeGzipped(bytes, originalWriteResponse);
+                        };
+                    }(writeResponse));
                 }
+                proxyResponse.addListener('error', function (err) {
+                    console.log(err)
+                });
+                //buffer answer
+                proxyResponse.addListener('data', function (chunk) {
+                    if (isKilled) return;
+                    buffer += chunk.toString();
+                });
+                proxyResponse.addListener('end', function () {
+                    if (!isKilled) {
+                        applyHtmlFilterRulesToBody(buffer, filterRulesToApply, writeResponse);
+                        stopTiming();
+                    }
+                });
+            }
+            else {
+                //send headers as received
+                response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
 
-                if (!isWhiteListHost && !isLocalRedirect)
-                    updateRequestTimes(beginTime, request, session)
-            });
+                //easy data forward
+                proxyResponse.addListener('data', function (chunk) {
+                    if (isKilled) return;
+                    response.write(chunk, 'binary');
+                });
+                proxyResponse.addListener('end', function () {
+                    if (!isKilled) {
+                        response.end();
+                        if (timeoutId)
+                            clearTimeout(timeoutId)
+                    }
+
+                    if (!isWhiteListHost && !isLocalRedirect)
+                        updateRequestTimes(beginTime, request, session)
+                });
+            }
         }
-    });
+    )
+    ;
 
-    //forward request data
+//forward request data
     request.addListener('data', function (chunk) {
         proxyRequest.write(chunk, 'binary');
     });
@@ -276,18 +318,40 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
     });
 }
 
+function applyHtmlFilterRulesToBody(body, rules, callback) {
+    try {
+        var $ = cheerio.load(body);
+        rules.forEach(function (rule) {
+            var selectionToRemove = $(rule.elementToRemoveSelector);
+            console.log("REMOVING: " + selectionToRemove.html());
+            selectionToRemove.remove();
+        });
+
+        // jQuery is now loaded on the jsdom window created from 'agent.body'
+        callback(null, $("html").html());
+    } catch (e) {
+        console.log(e);
+        callback(e, body);
+    }
+}
+
+function encodeGzipped(msg, callback) {
+    console.log("gzipping");
+    zlib.gzip(msg, callback);
+}
+
 function killTimeout(name) {
     var proxies = settings.proxies.filter(function (proxy) {
-        return proxy.name == name
+        return proxy.name == name;
     });
     if (proxies.length == 0) {
         var proxy = {
             name: name,
             killTimeout: defaultKillTimeout
         };
-        settings.proxies.push(proxy)
-        console.log("adding proxy for name: " + name)
-        proxies = [proxy]
+        settings.proxies.push(proxy);
+        console.log("adding proxy for name: " + name);
+        proxies = [proxy];
     }
 
     return proxies[0].killTimeout;
@@ -298,29 +362,29 @@ function updateRequestTimes(beginTime, request, session) {
         method: request.method,
         url: request.url,
         time: new Date().getTime() - beginTime.getTime()
-    })
+    });
 
     session.longestRequests = session.longestRequests.sort(function (e1, e2) {
-        return e2.time - e1.time
-    })
-    session.longestRequests = session.longestRequests.slice(0, 20)
+        return e2.time - e1.time;
+    });
+    session.longestRequests = session.longestRequests.slice(0, 20);
 }
 
 function updateBlockedHosts(host, request, session) {
-    var blockedHost = session.blockedHosts[host]
+    var blockedHost = session.blockedHosts[host];
     if (!blockedHost) {
         blockedHost = {
             host: host,
             requests: {}
-        }
-        session.blockedHosts[host] = blockedHost
+        };
+        session.blockedHosts[host] = blockedHost;
     }
-    updateBlockedHost(blockedHost, request)
+    updateBlockedHost(blockedHost, request);
 }
 
 function proxyServerHandler(request, response, name) {
-    var ip = request.connection.remoteAddress
-    var session = getSession(ip)
+    var ip = request.connection.remoteAddress;
+    var session = getSession(ip);
 
     //filter loops
     request = checkLoop(request, response);
@@ -328,59 +392,60 @@ function proxyServerHandler(request, response, name) {
         return;
     }
 
-    var host = decodeHost(request.headers.host).host
+    var host = decodeHost(request.headers.host).host;
 
     // replacing host names that are aliases for localhost with the sender ip
     // send request back to local dev server
-    var localRedirect = false
+    var localRedirect = false;
     if (settings.localhostAlias.indexOf(host) != -1) {
         host = ip;
-        localRedirect = true
+        localRedirect = true;
     }
     doProxying(response, request, host, session, localRedirect, name);
 }
 
 function getSession(ip) {
-    var session = sessions[ip]
+    var session = sessions[ip];
     if (!session) {
         session = {
             ip: ip,
             blockedHosts: {},
             longestRequests: []
-        }
+        };
         sessions[ip] = session;
     }
 
-    session.timestamp = new Date().getTime()
+    session.timestamp = new Date().getTime();
     return session;
 }
 
 function sessionCleanUp() {
-    var now = new Date().getTime()
+    var now = new Date().getTime();
     Object.keys(sessions).forEach(function (key) {
-        var session = sessions[key]
+        var session = sessions[key];
         if (now > session.timestamp + config.sessionLifeTime) {
-            util.log("removing session: " + key)
+            util.log("removing session: " + key);
             delete sessions[session]
         }
     })
 }
 
 function serveFile(filePath, ctx) {
-    var extension = /.*\.([^.]+)$/.exec(filePath)[1]
-    var mimeType = config.mimeTypesForExtension[extension]
-    ctx.response.setHeader('Content-Type', mimeType)
+    var extension = /.*\.([^.]+)$/.exec(filePath)[1];
+    var mimeType = config.mimeTypesForExtension[extension];
+    ctx.response.setHeader('Content-Type', mimeType);
     fs.readFile("." + filePath, function (err, data) {
-        ctx.response.statusCode = 200
-        ctx.response.write(data)
-        ctx.response.end()
+        ctx.response.statusCode = 200;
+        ctx.response.write(data);
+        ctx.response.end();
     });
     return null;
 }
 
+
 function serveExternalUrl(path, ctx) {
-    util.log("Serving External url: " + path)
-    var urlToRequest = url.parse(path)
+    util.log("Serving External url: " + path);
+    var urlToRequest = url.parse(path);
     urlToRequest.method = ctx.request.method;
     urlToRequest.headers = ctx.request.headers;
     var proxyRequest = http.request(urlToRequest);
@@ -389,19 +454,19 @@ function serveExternalUrl(path, ctx) {
 
         proxyResponse.on("data", function (data) {
             ctx.response.write(data)
-        })
+        });
 
         proxyResponse.on("end", function () {
             ctx.response.end()
-        })
-    })
+        });
+    });
     ctx.request.on("data", function (data) {
         proxyRequest.write(data)
-    })
+    });
 
     ctx.request.on("end", function () {
         proxyRequest.end()
-    })
+    });
     return null;
 }
 
@@ -413,9 +478,9 @@ var controlServerHandlers = {
             }
         },
         "DELETE": function (ctx) {
-            ctx.session.longestRequests = []
-            ctx.session.blockedHosts = {}
-            return {}
+            ctx.session.longestRequests = [];
+            ctx.session.blockedHosts = {};
+            return {};
         }
     },
 
@@ -429,18 +494,18 @@ var controlServerHandlers = {
         "POST": function (ctx) {
             readPostData(ctx.request, function (settings) {
                 writeSettingsFile(settings)
-            })
-            return {}
+            });
+            return {};
         }
     },
 
     "^/static/.+$": {
         "GET": function (ctx) {
-            var path = ctx.url.pathname
+            var path = ctx.url.pathname;
             if (path.indexOf("..") != -1) {
-                ctx.response.statusCode = 404
-                ctx.response.write("illegal path!")
-                ctx.response.end()
+                ctx.response.statusCode = 404;
+                ctx.response.write("illegal path!");
+                ctx.response.end();
                 return;
             }
             return serveFile(path, ctx);
@@ -449,17 +514,17 @@ var controlServerHandlers = {
 
     "^/external/.+$": {
         "GET": function (ctx) {
-            var path = /^\/external\/(.*)/.exec(ctx.url.pathname)[1]
+            var path = /^\/external\/(.*)/.exec(ctx.url.pathname)[1];
             return serveExternalUrl(path, ctx);
         }
     },
 
     "^/?$": {
         "GET": function (ctx) {
-            return serveFile("/static/html/main.html", ctx)
+            return serveFile("/static/html/main.html", ctx);
         }
     }
-}
+};
 
 
 function controlServerHandler(request, response) {
@@ -570,7 +635,8 @@ function bootstrap() {
 // global error handler
 process.on('uncaughtException', function (err) {
     util.log('Exception: ' + err);
-    util.log(err.stack);
+    if (err.stack !== undefined)
+        util.log(err.stack);
 });
 
 readOrCreateFile(configFilePath, defaultConfig, function (loadedConfig) {

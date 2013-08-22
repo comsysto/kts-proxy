@@ -11,5 +11,5 @@ MY_PID=$!
 PID_FILE=$DIR/pid
 
 echo "kill the slow - on duty"
-echo "storing PID: MY_PID into $PID_FILE"
-echo "MY_PID" >> "$PID_FILE"
+echo "storing PID: $MY_PID into $PID_FILE"
+echo "$MY_PID" >> "$PID_FILE"
