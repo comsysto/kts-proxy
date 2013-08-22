@@ -170,6 +170,7 @@ function getMatchingHtmlRules(request) {
         return  shouldApply
     });
 }
+
 function doProxying(response, request, host, session, isLocalRedirect, name) {
     var beginTime = new Date();
     if (session.blockedHosts[host]) {
@@ -192,7 +193,6 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
 
     //detect HTTP version
     var legacyHttp = request.httpVersionMajor == 1 && request.httpVersionMinor < 1 || request.httpVersionMajor < 1;
-
     //add x forwarded header
     var headers = request.headers;
     if (headers['X-Forwarded-For'] !== undefined) {
@@ -240,7 +240,7 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
 
     // forward response data
     proxyRequest.addListener('response', function (proxyResponse) {
-            if (filterRulesToApply.length !== 0 || (legacyHttp && proxyResponse.headers['transfer-encoding'] != undefined)) {
+            if ((filterRulesToApply.length !== 0 || (legacyHttp && proxyResponse.headers['transfer-encoding'] != undefined)) && proxyResponse.headers['content-type'].match('html') !== null) {
 
                 //filter headers
                 var headers = proxyResponse.headers;
@@ -280,7 +280,7 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
                 });
                 proxyResponse.addListener('end', function () {
                     if (!isKilled) {
-                        applyHtmlFilterRulesToBody(buffer, filterRulesToApply, writeResponse);
+                        applyHtmlFilterRulesToBodyAndWriteResponse(buffer, filterRulesToApply, writeResponse);
                         stopTiming();
                     }
                 });
@@ -318,20 +318,23 @@ function doProxying(response, request, host, session, isLocalRedirect, name) {
     });
 }
 
-function applyHtmlFilterRulesToBody(body, rules, callback) {
+function applyHtmlFilterRulesToBodyAndWriteResponse(body, rules, responseCallback) {
     try {
         var $ = cheerio.load(body);
         rules.forEach(function (rule) {
             var selectionToRemove = $(rule.elementToRemoveSelector);
-            console.log("REMOVING: " + selectionToRemove.html());
-            selectionToRemove.remove();
+            if(selectionToRemove.length > 0){
+                selectionToRemove.before($("<!-- Filtered " + rule.elementToRemoveSelector + " by KTS rule. -->"));
+                console.log("REMOVING: " + selectionToRemove.html());
+                selectionToRemove.remove();
+            }
         });
-
         // jQuery is now loaded on the jsdom window created from 'agent.body'
-        callback(null, $("html").html());
+        responseCallback(null, $("html").html());
+
     } catch (e) {
         console.log(e);
-        callback(e, body);
+        responseCallback(e, body);
     }
 }
 
@@ -401,6 +404,7 @@ function proxyServerHandler(request, response, name) {
         host = ip;
         localRedirect = true;
     }
+
     doProxying(response, request, host, session, localRedirect, name);
 }
 
@@ -529,10 +533,10 @@ var controlServerHandlers = {
 
 function controlServerHandler(request, response) {
 
-    var parsedUrl = url.parse(request.url, true)
-    var ip = request.connection.remoteAddress
-    var sessionName = ip
-    var query = url.parse(request.url, true).query
+    var parsedUrl = url.parse(request.url, true);
+    var ip = request.connection.remoteAddress;
+    var sessionName = ip;
+    var query = url.parse(request.url, true).query;
     if (query && query.session) {
         if (ipPattern.test(query.session)) {
             sessionName = query.session
@@ -540,7 +544,7 @@ function controlServerHandler(request, response) {
             console.log("invalid session parameter: " + query.session + " in url: " + request.url)
         }
     }
-    var session = getSession(sessionName)
+    var session = getSession(sessionName);
 
     var ctx = {
         request: request,
@@ -548,18 +552,18 @@ function controlServerHandler(request, response) {
         url: parsedUrl,
         session: session,
         ip: ip
-    }
+    };
 
     var matchingPathes = Object.keys(controlServerHandlers).filter(function (pathPattern) {
         return new RegExp(pathPattern).test(ctx.url.pathname)
-    })
+    });
 
     if (matchingPathes.length > 0) {
-        var supportedMethods = controlServerHandlers[matchingPathes[0]]
-        var handler = supportedMethods[request.method]
+        var supportedMethods = controlServerHandlers[matchingPathes[0]];
+        var handler = supportedMethods[request.method];
         if (handler) {
-            var result = handler(ctx)
-            var statusCode = 200
+            var result = handler(ctx);
+            var statusCode = 200;
 
             // if handler has undefined or null as result
             // the handler is managing the response.
@@ -570,14 +574,14 @@ function controlServerHandler(request, response) {
                 if (result.statusCode) {
                     statusCode = result.statusCode
                 }
-                response.statusCode = statusCode
+                response.statusCode = statusCode;
                 response.end()
             }
             return; // normal control flow ...
         }
     }
 
-    response.statusCode = 404
+    response.statusCode = 404;
     response.end()
 }
 
@@ -604,11 +608,11 @@ function startServers() {
     config.proxies.forEach(function (proxy) {
         util.log("Starting proxy server'" + proxy.name + "' on interface '" + proxy.host + ':' + proxy.port);
 
-        // initilaise kill timeout for proxy
-        killTimeout(proxy.name)
+        // initialize kill timeout for proxy
+        killTimeout(proxy.name);
         var server = http.createServer(function (req, res) {
             proxyServerHandler(req, res, proxy.name)
-        })
+        });
         server.listen(proxy.port, proxy.host);
     });
 }
@@ -617,7 +621,7 @@ function startServers() {
 function bootstrap() {
 
     // check for old sessions every minute
-    setInterval(sessionCleanUp, 60 * 1000)
+    setInterval(sessionCleanUp, 60 * 1000);
 
     // enable file watch for settings
     if (config.watchSettingsFile) {
